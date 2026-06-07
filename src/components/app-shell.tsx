@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -12,9 +12,12 @@ import {
   Bell,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { useCircle } from "@/hooks/use-circle";
 
 type NavItem = {
   to: string;
@@ -35,10 +38,26 @@ const NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/login" });
+  }, [loading, user, navigate]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-dvh grid place-items-center bg-background text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <span className="size-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          Loading your circle…
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -58,7 +77,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-2">
           <button className="p-2 rounded-full hover:bg-muted relative" aria-label="Notifications">
             <Bell className="size-5" />
-            <span className="absolute top-1 right-1 size-2 rounded-full bg-destructive" />
           </button>
           <button
             className="p-2 rounded-full hover:bg-muted"
@@ -95,12 +113,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function Brand({ inline = false }: { inline?: boolean }) {
+  const { circle } = useCircle();
   return (
     <div className={cn("flex items-center gap-3", inline ? "" : "px-6 h-20 border-b border-sidebar-border")}>
       <Logo />
-      <div>
+      <div className="min-w-0">
         <div className="font-display font-bold text-xl leading-none">CareCircle</div>
-        <div className="text-xs text-muted-foreground mt-1">Care, together.</div>
+        <div className="text-xs text-muted-foreground mt-1 truncate">{circle?.name ?? "Care, together."}</div>
       </div>
     </div>
   );
@@ -143,25 +162,54 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate: () =>
 }
 
 function UserCard() {
+  const { profile, user, signOut } = useAuth();
+  const { myRole } = useCircle();
+  const navigate = useNavigate();
+  const displayName = profile?.full_name || user?.email || "You";
+  const initials = displayName
+    .split(/[\s@]/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const role: AppRole = myRole ?? profile?.role ?? "helper";
+
+  async function handleSignOut() {
+    await signOut();
+    navigate({ to: "/login" });
+  }
+
   return (
-    <div className="p-3 border-t border-sidebar-border">
+    <div className="p-3 border-t border-sidebar-border flex items-center gap-2">
       <Link
-        to="/profile"
-        className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent transition-colors"
+        to="/settings"
+        className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent transition-colors flex-1 min-w-0"
       >
         <div className="size-10 rounded-full bg-gradient-to-br from-primary to-info text-primary-foreground grid place-items-center font-semibold">
-          SM
+          {initials || "?"}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">Sarah Miller</div>
-          <RoleBadge role="Coordinator" />
+          <div className="text-sm font-medium truncate">{displayName}</div>
+          <RoleBadge role={appRoleToLabel(role)} />
         </div>
       </Link>
+      <button
+        onClick={handleSignOut}
+        aria-label="Sign out"
+        className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+      >
+        <LogOut className="size-4" />
+      </button>
     </div>
   );
 }
 
 export type Role = "Admin" | "Coordinator" | "Helper";
+
+export function appRoleToLabel(r: AppRole): Role {
+  return (r.charAt(0).toUpperCase() + r.slice(1)) as Role;
+}
 
 export function RoleBadge({ role, className }: { role: Role; className?: string }) {
   const styles: Record<Role, string> = {
