@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PatientRouteImport } from './routes/patient'
 import { Route as MedicationsRouteImport } from './routes/medications'
@@ -29,6 +30,11 @@ const TasksRoute = TasksRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/medications': typeof MedicationsRoute
   '/patient': typeof PatientRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tasks': typeof TasksRoute
 }
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/medications': typeof MedicationsRoute
   '/patient': typeof PatientRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tasks': typeof TasksRoute
 }
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/medications': typeof MedicationsRoute
   '/patient': typeof PatientRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tasks': typeof TasksRoute
 }
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/medications'
     | '/patient'
     | '/reports'
+    | '/settings'
     | '/signup'
     | '/tasks'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/medications'
     | '/patient'
     | '/reports'
+    | '/settings'
     | '/signup'
     | '/tasks'
   id:
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/medications'
     | '/patient'
     | '/reports'
+    | '/settings'
     | '/signup'
     | '/tasks'
   fileRoutesById: FileRoutesById
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   MedicationsRoute: typeof MedicationsRoute
   PatientRoute: typeof PatientRoute
   ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   TasksRoute: typeof TasksRoute
 }
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -265,6 +285,7 @@ const rootRouteChildren: RootRouteChildren = {
   MedicationsRoute: MedicationsRoute,
   PatientRoute: PatientRoute,
   ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   TasksRoute: TasksRoute,
 }
