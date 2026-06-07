@@ -12,8 +12,7 @@ export function useRealtime(channelName: string, subs: TableSub[], onChange: () 
     if (!subs.length) return;
     const ch = supabase.channel(channelName);
     subs.forEach((s) => {
-      ch.on(
-        // @ts-expect-error generic event signature
+      (ch as unknown as { on: (...a: unknown[]) => unknown }).on(
         "postgres_changes",
         { event: "*", schema: "public", table: s.table, ...(s.filter ? { filter: s.filter } : {}) },
         () => onChange(),
