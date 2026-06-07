@@ -86,18 +86,19 @@ function CalendarPage() {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-          {([
-            ["primary", "Appointment"],
-            ["info", "Medication"],
-            ["warning", "Task"],
-            ["accent", "Visit"],
-          ] as const).map(([tone, label]) => (
-            <span key={label} className="flex items-center gap-2">
-              <span className={`size-3 rounded-sm bg-${tone}/40 border border-${tone}/50`} />
-              {label}
+          {[
+            { cls: "bg-primary/40 border-primary/50", label: "Appointment" },
+            { cls: "bg-info/40 border-info/50", label: "Medication" },
+            { cls: "bg-warning/40 border-warning/50", label: "Task" },
+            { cls: "bg-accent border-accent", label: "Visit" },
+          ].map((l) => (
+            <span key={l.label} className="flex items-center gap-2">
+              <span className={`size-3 rounded-sm border ${l.cls}`} />
+              {l.label}
             </span>
           ))}
         </div>
+
       </div>
     </AppShell>
   );
