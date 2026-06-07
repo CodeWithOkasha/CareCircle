@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { HeartPulse, User, Mail, Lock, Users } from "lucide-react";
+import { useAuth, type AppRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Create account — CareCircle" }] }),
@@ -7,6 +9,32 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
+  const { signUp, user } = useAuth();
+  const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<AppRole>("coordinator");
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) navigate({ to: "/dashboard" });
+  }, [user, navigate]);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    setLoading(true);
+    const { error, needsConfirmation } = await signUp(email, password, fullName, role);
+    setLoading(false);
+    if (error) setError(error);
+    else if (needsConfirmation) setInfo("Check your email to confirm your account, then log in.");
+    else navigate({ to: "/dashboard" });
+  }
+
   return (
     <div className="min-h-dvh grid lg:grid-cols-2 bg-background">
       <main className="flex items-center justify-center p-6 sm:p-12 order-2 lg:order-1">
@@ -21,44 +49,41 @@ function SignupPage() {
           <h1 className="text-3xl font-bold tracking-tight">Create your circle</h1>
           <p className="mt-2 text-muted-foreground">It takes less than a minute.</p>
 
-          <form className="mt-8 space-y-5" onSubmit={(e) => e.preventDefault()}>
-            <Field label="Full name" icon={<User className="size-4" />} placeholder="Sarah Miller" />
-            <Field label="Email" icon={<Mail className="size-4" />} type="email" placeholder="you@example.com" />
-            <Field label="Password" icon={<Lock className="size-4" />} type="password" placeholder="At least 8 characters" />
+          <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+            <Field label="Full name" icon={<User className="size-4" />} required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Sarah Miller" />
+            <Field label="Email" icon={<Mail className="size-4" />} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+            <Field label="Password" icon={<Lock className="size-4" />} type="password" required minLength={6} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
 
             <div>
               <label className="block text-sm font-medium mb-1.5">Your role</label>
               <div className="grid grid-cols-3 gap-2">
-                {(["Admin", "Coordinator", "Helper"] as const).map((r, i) => (
+                {(["admin", "coordinator", "helper"] as const).map((r) => (
                   <label
                     key={r}
-                    className="cursor-pointer rounded-xl border border-input bg-card px-3 py-3 text-center text-sm font-medium hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary-soft has-[:checked]:text-primary"
+                    className={`cursor-pointer rounded-xl border px-3 py-3 text-center text-sm font-medium hover:bg-muted ${role === r ? "border-primary bg-primary-soft text-primary" : "border-input bg-card"}`}
                   >
-                    <input type="radio" name="role" defaultChecked={i === 1} className="sr-only" />
-                    {r}
+                    <input type="radio" name="role" checked={role === r} onChange={() => setRole(r)} className="sr-only" />
+                    {r.charAt(0).toUpperCase() + r.slice(1)}
                   </label>
                 ))}
               </div>
             </div>
 
-            <label className="flex items-start gap-2 text-sm text-muted-foreground">
-              <input type="checkbox" className="mt-1 size-4 rounded border-input accent-primary" />
-              <span>I agree to the Terms of Service and Privacy Policy.</span>
-            </label>
+            {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive px-3 py-2 text-sm">{error}</div>}
+            {info && <div className="rounded-xl border border-success/30 bg-success/10 text-success px-3 py-2 text-sm">{info}</div>}
 
-            <Link
-              to="/dashboard"
-              className="block text-center w-full px-4 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90"
+            <button
+              type="submit"
+              disabled={loading}
+              className="block text-center w-full px-4 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 disabled:opacity-60"
             >
-              Create account
-            </Link>
+              {loading ? "Creating…" : "Create account"}
+            </button>
           </form>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary font-semibold hover:underline">
-              Log in
-            </Link>
+            <Link to="/login" className="text-primary font-semibold hover:underline">Log in</Link>
           </p>
         </div>
       </main>
@@ -69,8 +94,7 @@ function SignupPage() {
           <Users className="size-10 text-primary" />
           <h2 className="mt-4 text-4xl font-bold tracking-tight">Better care, together.</h2>
           <p className="mt-4 text-foreground/75 max-w-md text-lg">
-            Invite family, friends, and caregivers. Assign roles. Share the small wins. CareCircle
-            keeps everyone gently in sync.
+            Invite family, friends, and caregivers. Assign roles. Share the small wins.
           </p>
         </div>
         <p className="text-sm text-foreground/60">© CareCircle Health</p>
@@ -79,20 +103,13 @@ function SignupPage() {
   );
 }
 
-function Field({
-  label,
-  icon,
-  ...props
-}: { label: string; icon?: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) {
+function Field({ label, icon, ...props }: { label: string; icon?: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
       <label className="block text-sm font-medium mb-1.5">{label}</label>
       <div className="relative">
         {icon && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</span>}
-        <input
-          {...props}
-          className="w-full h-12 rounded-xl border border-input bg-card pl-10 pr-3 text-base outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-        />
+        <input {...props} className="w-full h-12 rounded-xl border border-input bg-card pl-10 pr-3 text-base outline-none focus:ring-2 focus:ring-ring focus:border-transparent" />
       </div>
     </div>
   );

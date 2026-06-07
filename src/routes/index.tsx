@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { HeartPulse, Users, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -12,6 +14,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  useEffect(() => { if (!loading && user) navigate({ to: "/dashboard" }); }, [user, loading, navigate]);
+
   return (
     <div className="min-h-dvh bg-gradient-to-br from-primary-soft via-background to-accent/40">
       <header className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
@@ -22,15 +28,8 @@ function Landing() {
           <span className="font-display font-bold text-xl">CareCircle</span>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/login" className="px-4 py-2 rounded-full text-sm font-medium hover:bg-card transition-colors">
-            Log in
-          </Link>
-          <Link
-            to="/signup"
-            className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:opacity-90"
-          >
-            Get started
-          </Link>
+          <Link to="/login" className="px-4 py-2 rounded-full text-sm font-medium hover:bg-card transition-colors">Log in</Link>
+          <Link to="/signup" className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:opacity-90">Get started</Link>
         </div>
       </header>
 
@@ -42,22 +41,11 @@ function Landing() {
           Care that brings the <span className="text-primary">whole circle</span> together.
         </h1>
         <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
-          Coordinate medications, daily tasks, and well-being checks for the people you love —
-          all in one calm, shared space.
+          Coordinate medications, daily tasks, and well-being checks for the people you love — all in one calm, shared space.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            to="/dashboard"
-            className="px-6 py-3.5 rounded-full bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 hover:opacity-90"
-          >
-            Open Dashboard
-          </Link>
-          <Link
-            to="/patient"
-            className="px-6 py-3.5 rounded-full bg-card border border-border font-semibold hover:bg-muted"
-          >
-            Try Patient Mode
-          </Link>
+          <Link to="/signup" className="px-6 py-3.5 rounded-full bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 hover:opacity-90">Get started free</Link>
+          <Link to="/login" className="px-6 py-3.5 rounded-full bg-card border border-border font-semibold hover:bg-muted">Log in</Link>
         </div>
 
         <div className="mt-20 grid sm:grid-cols-3 gap-4 text-left">

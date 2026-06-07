@@ -1,98 +1,80 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell, PageHeader, RoleBadge, type Role } from "@/components/app-shell";
-import { Pill, CheckSquare, MessageCircle, AlertTriangle, Heart, Droplet } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AppShell, PageHeader } from "@/components/app-shell";
+import { MessageCircle, Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useCircle } from "@/hooks/use-circle";
+import { useAuth } from "@/hooks/use-auth";
+import { useRealtime } from "@/hooks/use-realtime";
 
 export const Route = createFileRoute("/activity")({
   head: () => ({ meta: [{ title: "Activity — CareCircle" }] }),
   component: ActivityPage,
 });
 
-type Event = {
-  who: string;
-  role: Role;
-  icon: typeof Pill;
-  text: string;
-  time: string;
-  tone?: "default" | "alert" | "success";
-};
-
-const EVENTS: Event[] = [
-  { who: "Mom (Patient)", role: "Helper", icon: AlertTriangle, text: "Tapped 'I am in pain' — rated 6/10", time: "11:42 AM", tone: "alert" },
-  { who: "Daniel Park", role: "Admin", icon: Pill, text: "Marked Lisinopril as taken", time: "10:15 AM", tone: "success" },
-  { who: "Sarah Miller", role: "Coordinator", icon: CheckSquare, text: "Completed 'Morning walk in the garden'", time: "10:34 AM" },
-  { who: "Mom (Patient)", role: "Helper", icon: Droplet, text: "Requested water", time: "10:01 AM" },
-  { who: "Emma Lopez", role: "Helper", icon: MessageCircle, text: "Commented on 'Grocery run': 'Picked up soup and bread.'", time: "Yesterday, 6:12 PM" },
-  { who: "Mom (Patient)", role: "Helper", icon: Heart, text: "Mood check-in: feeling calm", time: "Yesterday, 5:00 PM" },
-  { who: "Daniel Park", role: "Admin", icon: Pill, text: "Added new medication: Vitamin D3 1000 IU", time: "Yesterday, 2:30 PM" },
-];
+type Post = { id: string; author_id: string; content: string; category: string | null; created_at: string };
 
 function ActivityPage() {
+  const { circle, members } = useCircle();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [content, setContent] = useState("");
+
+  const { data: posts = [] } = useQuery({
+    queryKey: ["feed_posts", circle?.id],
+    enabled: !!circle,
+    queryFn: async () => {
+      const { data } = await supabase.from("feed_posts").select("*").eq("circle_id", circle!.id).order("created_at", { ascending: false }).limit(50);
+      return (data ?? []) as Post[];
+    },
+  });
+
+  useRealtime(
+    `feed:${circle?.id ?? "none"}`,
+    circle ? [{ table: "feed_posts", filter: `circle_id=eq.${circle.id}` }] : [],
+    () => qc.invalidateQueries({ queryKey: ["feed_posts", circle?.id] }),
+  );
+
+  async function post(e: React.FormEvent) {
+    e.preventDefault();
+    if (!circle || !user || !content.trim()) return;
+    await supabase.from("feed_posts").insert({ circle_id: circle.id, author_id: user.id, content: content.trim() });
+    setContent("");
+  }
+
   return (
     <AppShell>
       <PageHeader title="Activity feed" subtitle="A live timeline of what's happening across your circle." />
 
-      <div className="grid lg:grid-cols-[1fr_280px] gap-6">
-        <div className="rounded-2xl bg-card border border-border p-4 sm:p-6">
-          <ol className="relative space-y-1">
-            <span className="absolute left-5 top-3 bottom-3 w-px bg-border" aria-hidden />
-            {EVENTS.map((e, i) => {
-              const toneRing =
-                e.tone === "alert"
-                  ? "bg-destructive text-destructive-foreground ring-destructive/30"
-                  : e.tone === "success"
-                  ? "bg-success text-success-foreground ring-success/30"
-                  : "bg-primary text-primary-foreground ring-primary/30";
-              return (
-                <li key={i} className="relative pl-14 py-3">
-                  <span className={`absolute left-1 top-3 size-9 rounded-full grid place-items-center ring-4 ring-card ${toneRing}`}>
-                    <e.icon className="size-4" />
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{e.who}</span>
-                    <RoleBadge role={e.role} />
-                    <span className="text-xs text-muted-foreground ml-auto">{e.time}</span>
-                  </div>
-                  <p className="text-sm text-foreground/80 mt-1">{e.text}</p>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
+      <form onSubmit={post} className="mb-6 rounded-2xl border border-border bg-card p-4 flex gap-3">
+        <input value={content} onChange={(e) => setContent(e.target.value)} placeholder="Share an update with your circle…" className="flex-1 h-11 rounded-xl border border-input bg-background px-3" />
+        <button type="submit" className="inline-flex items-center gap-2 px-4 h-11 rounded-xl bg-primary text-primary-foreground font-semibold">
+          <Send className="size-4" /> Post
+        </button>
+      </form>
 
-        <aside className="space-y-4">
-          <div className="rounded-2xl bg-card border border-border p-5">
-            <h3 className="font-display font-bold mb-3">Filter by</h3>
-            <ul className="space-y-2 text-sm">
-              {["All updates", "Medications", "Tasks", "Patient signals", "Comments"].map((f, i) => (
-                <li key={f}>
-                  <button className={`w-full text-left px-3 py-2 rounded-lg ${i === 0 ? "bg-primary-soft text-primary font-semibold" : "hover:bg-muted"}`}>
-                    {f}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="rounded-2xl bg-card border border-border p-5">
-            <h3 className="font-display font-bold mb-3">Today at a glance</h3>
-            <dl className="space-y-2 text-sm">
-              <Row label="Patient signals" value="3" />
-              <Row label="Tasks completed" value="5" />
-              <Row label="Medications given" value="2" />
-              <Row label="Messages" value="4" />
-            </dl>
-          </div>
-        </aside>
+      <div className="rounded-2xl bg-card border border-border p-4 sm:p-6">
+        <ol className="relative space-y-1">
+          <span className="absolute left-5 top-3 bottom-3 w-px bg-border" aria-hidden />
+          {posts.map((p) => {
+            const author = members.find((m) => m.user_id === p.author_id)?.profile?.full_name ?? "Member";
+            return (
+              <li key={p.id} className="relative pl-14 py-3">
+                <span className="absolute left-1 top-3 size-9 rounded-full grid place-items-center ring-4 ring-card bg-primary text-primary-foreground">
+                  <MessageCircle className="size-4" />
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{author}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{new Date(p.created_at).toLocaleString()}</span>
+                </div>
+                <p className="text-sm text-foreground/80 mt-1">{p.content}</p>
+              </li>
+            );
+          })}
+          {posts.length === 0 && <li className="text-center text-sm text-muted-foreground py-10">No activity yet — be the first to post.</li>}
+        </ol>
       </div>
     </AppShell>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-bold tabular-nums">{value}</dd>
-    </div>
   );
 }

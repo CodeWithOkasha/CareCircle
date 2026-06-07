@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { HeartPulse, Mail, Lock } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in — CareCircle" }] }),
@@ -7,6 +9,27 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) navigate({ to: "/dashboard" });
+  }, [user, navigate]);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const { error } = await signIn(email, password);
+    setLoading(false);
+    if (error) setError(error);
+    else navigate({ to: "/dashboard" });
+  }
+
   return (
     <div className="min-h-dvh grid lg:grid-cols-2 bg-background">
       <aside className="hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-primary to-info text-primary-foreground">
@@ -38,33 +61,42 @@ function LoginPage() {
           <h1 className="text-3xl font-bold tracking-tight">Log in</h1>
           <p className="mt-2 text-muted-foreground">Glad you're back. Care continues here.</p>
 
-          <form className="mt-8 space-y-5" onSubmit={(e) => e.preventDefault()}>
-            <Field label="Email" icon={<Mail className="size-4" />} type="email" placeholder="you@example.com" />
-            <Field label="Password" icon={<Lock className="size-4" />} type="password" placeholder="••••••••" />
+          <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+            <Field
+              label="Email"
+              icon={<Mail className="size-4" />}
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+            <Field
+              label="Password"
+              icon={<Lock className="size-4" />}
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-muted-foreground">
-                <input type="checkbox" className="size-4 rounded border-input accent-primary" />
-                Remember me
-              </label>
-              <a href="#" className="text-primary font-medium hover:underline">Forgot password?</a>
-            </div>
+            {error && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive px-3 py-2 text-sm">
+                {error}
+              </div>
+            )}
 
-            <Link
-              to="/dashboard"
-              className="block text-center w-full px-4 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90"
+            <button
+              type="submit"
+              disabled={loading}
+              className="block text-center w-full px-4 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 disabled:opacity-60"
             >
-              Log in
-            </Link>
+              {loading ? "Signing in…" : "Log in"}
+            </button>
           </form>
-
-          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px bg-border flex-1" /> OR <div className="h-px bg-border flex-1" />
-          </div>
-
-          <button className="w-full px-4 py-3 rounded-xl border border-border bg-card hover:bg-muted font-medium">
-            Continue with Google
-          </button>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
             New here?{" "}
