@@ -15,6 +15,7 @@ import { Route as PatientRouteImport } from './routes/patient'
 import { Route as MedicationsRouteImport } from './routes/medications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CircleRouteImport } from './routes/circle'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
@@ -49,6 +50,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CircleRoute = CircleRouteImport.update({
+  id: '/circle',
+  path: '/circle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/calendar': typeof CalendarRoute
+  '/circle': typeof CircleRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/medications': typeof MedicationsRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/calendar': typeof CalendarRoute
+  '/circle': typeof CircleRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/medications': typeof MedicationsRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/calendar': typeof CalendarRoute
+  '/circle': typeof CircleRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/medications': typeof MedicationsRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/calendar'
+    | '/circle'
     | '/dashboard'
     | '/login'
     | '/medications'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/calendar'
+    | '/circle'
     | '/dashboard'
     | '/login'
     | '/medications'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/calendar'
+    | '/circle'
     | '/dashboard'
     | '/login'
     | '/medications'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   CalendarRoute: typeof CalendarRoute
+  CircleRoute: typeof CircleRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   MedicationsRoute: typeof MedicationsRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/circle': {
+      id: '/circle'
+      path: '/circle'
+      fullPath: '/circle'
+      preLoaderRoute: typeof CircleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   CalendarRoute: CalendarRoute,
+  CircleRoute: CircleRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   MedicationsRoute: MedicationsRoute,
