@@ -1,104 +1,94 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell, PageHeader, RoleBadge, type Role } from "@/components/app-shell";
-import { UserPlus, Mail, MoreHorizontal } from "lucide-react";
+import { AppShell, PageHeader, RoleBadge, appRoleToLabel } from "@/components/app-shell";
+import { Users, Trash2 } from "lucide-react";
+import { useCircle, isAdmin } from "@/hooks/use-circle";
+import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/circle")({
   head: () => ({ meta: [{ title: "Circle — CareCircle" }] }),
   component: CirclePage,
 });
 
-type Member = {
-  name: string;
-  email: string;
-  role: Role;
-  relation: string;
-  joined: string;
-  initials: string;
-};
-
-const MEMBERS: Member[] = [
-  { name: "Daniel Park", email: "daniel@example.com", role: "Admin", relation: "Son", joined: "Jan 2025", initials: "DP" },
-  { name: "Sarah Miller", email: "sarah@example.com", role: "Coordinator", relation: "Daughter", joined: "Jan 2025", initials: "SM" },
-  { name: "Emma Lopez", email: "emma@example.com", role: "Helper", relation: "Granddaughter", joined: "Mar 2025", initials: "EL" },
-  { name: "James Chen", email: "james@example.com", role: "Helper", relation: "Neighbor", joined: "Apr 2025", initials: "JC" },
-  { name: "Dr. Hall", email: "h.hall@clinic.com", role: "Helper", relation: "Physician", joined: "May 2025", initials: "DH" },
-];
-
-const PENDING = [
-  { email: "auntmae@example.com", role: "Helper" as Role, sent: "2 days ago" },
-];
-
 function CirclePage() {
+  const { circle, members, myRole, reload } = useCircle();
+  const { user } = useAuth();
+  const admin = isAdmin(myRole);
+
+  const counts = {
+    admin: members.filter((m) => m.role === "admin").length,
+    coordinator: members.filter((m) => m.role === "coordinator").length,
+    helper: members.filter((m) => m.role === "helper").length,
+  };
+
+  async function changeRole(id: string, role: AppRole) {
+    await supabase.from("circle_members").update({ role }).eq("id", id);
+    reload();
+  }
+  async function removeMember(id: string) {
+    await supabase.from("circle_members").delete().eq("id", id);
+    reload();
+  }
+
   return (
     <AppShell>
       <PageHeader
         title="Circle management"
-        subtitle="Margaret's care circle — 5 members across 3 roles."
+        subtitle={circle ? `${circle.name} — ${members.length} members` : "Loading…"}
         action={
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90">
-            <UserPlus className="size-4" /> Invite member
-          </button>
+          <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium">
+            <Users className="size-4" /> Invites coming soon
+          </span>
         }
       />
 
       <div className="grid md:grid-cols-3 gap-4 mb-6">
-        <RoleCard role="Admin" count={1} desc="Full access. Manages the circle and billing." />
-        <RoleCard role="Coordinator" count={1} desc="Plans care, assigns tasks, manages calendar." />
-        <RoleCard role="Helper" count={3} desc="Completes tasks and supports the patient." />
+        <RoleCard role="Admin" count={counts.admin} desc="Full access. Manages the circle." />
+        <RoleCard role="Coordinator" count={counts.coordinator} desc="Plans care, assigns tasks, manages calendar." />
+        <RoleCard role="Helper" count={counts.helper} desc="Completes tasks and supports the patient." />
       </div>
 
       <section className="rounded-2xl bg-card border border-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="font-display font-bold text-lg">Members</h2>
-          <span className="text-sm text-muted-foreground">{MEMBERS.length} active</span>
-        </div>
-        <ul className="divide-y divide-border">
-          {MEMBERS.map((m) => (
-            <li key={m.email} className="px-6 py-4 flex items-center gap-4">
-              <div className="size-12 rounded-full bg-gradient-to-br from-primary to-info text-primary-foreground grid place-items-center font-semibold">
-                {m.initials}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold truncate">{m.name}</span>
-                  <RoleBadge role={m.role} />
-                </div>
-                <div className="text-sm text-muted-foreground truncate">{m.relation} · {m.email}</div>
-              </div>
-              <div className="hidden sm:block text-sm text-muted-foreground">Joined {m.joined}</div>
-              <button className="size-9 rounded-lg hover:bg-muted grid place-items-center" aria-label="More">
-                <MoreHorizontal className="size-5" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mt-6 rounded-2xl bg-card border border-border overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="font-display font-bold text-lg">Pending invitations</h2>
+          <h2 className="font-display font-bold text-lg">Members</h2>
         </div>
         <ul className="divide-y divide-border">
-          {PENDING.map((p) => (
-            <li key={p.email} className="px-6 py-4 flex items-center gap-4">
-              <div className="size-12 rounded-full bg-muted grid place-items-center text-muted-foreground">
-                <Mail className="size-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold truncate">{p.email}</div>
-                <div className="text-sm text-muted-foreground">Invited as {p.role} · {p.sent}</div>
-              </div>
-              <button className="px-3 py-1.5 rounded-lg border border-input hover:bg-muted text-sm font-medium">Resend</button>
-              <button className="px-3 py-1.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10">Cancel</button>
-            </li>
-          ))}
+          {members.map((m) => {
+            const name = m.profile?.full_name ?? "Member";
+            const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+            return (
+              <li key={m.id} className="px-6 py-4 flex items-center gap-4">
+                <div className="size-12 rounded-full bg-gradient-to-br from-primary to-info text-primary-foreground grid place-items-center font-semibold">
+                  {initials || "?"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold truncate">{name}{m.user_id === user?.id && " (You)"}</span>
+                    <RoleBadge role={appRoleToLabel(m.role)} />
+                  </div>
+                </div>
+                {admin && m.user_id !== user?.id && (
+                  <>
+                    <select value={m.role} onChange={(e) => changeRole(m.id, e.target.value as AppRole)} className="h-9 rounded-lg border border-input bg-background px-2 text-sm">
+                      <option value="admin">Admin</option>
+                      <option value="coordinator">Coordinator</option>
+                      <option value="helper">Helper</option>
+                    </select>
+                    <button onClick={() => removeMember(m.id)} className="text-muted-foreground hover:text-destructive p-2" aria-label="Remove">
+                      <Trash2 className="size-4" />
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
     </AppShell>
   );
 }
 
-function RoleCard({ role, count, desc }: { role: Role; count: number; desc: string }) {
+function RoleCard({ role, count, desc }: { role: "Admin" | "Coordinator" | "Helper"; count: number; desc: string }) {
   return (
     <div className="rounded-2xl bg-card border border-border p-5">
       <div className="flex items-center justify-between">
