@@ -27,7 +27,9 @@ type AuthCtx = {
   ) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  updateProfile: (patch: Partial<Pick<Profile, "full_name" | "avatar_url" | "role">>) => Promise<{ error?: string }>;
+  updateProfile: (
+    patch: Partial<Pick<Profile, "full_name" | "avatar_url" | "role">>,
+  ) => Promise<{ error?: string }>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -37,7 +39,8 @@ async function fetchProfile(user: User): Promise<Profile | null> {
   if (data) return data as Profile;
 
   const role = (user.user_metadata?.role as AppRole | undefined) ?? "helper";
-  const fullName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "CareCircle member";
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "CareCircle member";
   const { data: created } = await supabase
     .from("profiles")
     .insert({ id: user.id, full_name: fullName, role })
