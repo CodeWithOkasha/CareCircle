@@ -47,7 +47,8 @@ export function CircleProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
 
-    const preferredRole: AppRole = (user.user_metadata?.role as AppRole | undefined) ?? profile?.role ?? "helper";
+    const preferredRole: AppRole =
+      (user.user_metadata?.role as AppRole | undefined) ?? profile?.role ?? "helper";
 
     // Find the newest circle the user belongs to so duplicate bootstrap attempts do not pin them to stale data.
     const { data: mems } = await supabase
@@ -109,7 +110,12 @@ export function CircleProvider({ children }: { children: ReactNode }) {
       .channel(`circle:${circle.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "circle_members", filter: `circle_id=eq.${circle.id}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "circle_members",
+          filter: `circle_id=eq.${circle.id}`,
+        },
         () => load(),
       )
       .on(
