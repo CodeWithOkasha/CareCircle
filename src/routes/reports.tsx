@@ -14,15 +14,26 @@ export const Route = createFileRoute("/reports")({
 function ReportsPage() {
   const { circle } = useCircle();
   const qc = useQueryClient();
-  const since = new Date(); since.setDate(since.getDate() - 14); since.setHours(0, 0, 0, 0);
+  const since = new Date();
+  since.setDate(since.getDate() - 14);
+  since.setHours(0, 0, 0, 0);
 
   const { data } = useQuery({
     queryKey: ["reports", circle?.id],
     enabled: !!circle,
     queryFn: async () => {
       const [moods, logs, meds, tasks] = await Promise.all([
-        supabase.from("patient_moods").select("pain_level, created_at").eq("circle_id", circle!.id).gte("created_at", since.toISOString()).order("created_at"),
-        supabase.from("medication_logs").select("id, medication_id, taken_at").eq("circle_id", circle!.id).gte("taken_at", since.toISOString()),
+        supabase
+          .from("patient_moods")
+          .select("pain_level, created_at")
+          .eq("circle_id", circle!.id)
+          .gte("created_at", since.toISOString())
+          .order("created_at"),
+        supabase
+          .from("medication_logs")
+          .select("id, medication_id, taken_at")
+          .eq("circle_id", circle!.id)
+          .gte("taken_at", since.toISOString()),
         supabase.from("medications").select("id, name").eq("circle_id", circle!.id),
         supabase.from("tasks").select("id, status").eq("circle_id", circle!.id),
       ]);
@@ -32,10 +43,15 @@ function ReportsPage() {
       (moods.data ?? []).forEach((m) => {
         if (m.pain_level == null) return;
         const dayIdx = Math.floor((Date.now() - new Date(m.created_at).getTime()) / 86400000);
-        if (dayIdx >= 0 && dayIdx < 14) { days[13 - dayIdx] += m.pain_level; counts[13 - dayIdx]++; }
+        if (dayIdx >= 0 && dayIdx < 14) {
+          days[13 - dayIdx] += m.pain_level;
+          counts[13 - dayIdx]++;
+        }
       });
       const pain = days.map((s, i) => (counts[i] ? s / counts[i] : 0));
-      const avgPain = pain.filter((p) => p > 0).reduce((a, b) => a + b, 0) / Math.max(1, pain.filter((p) => p > 0).length);
+      const avgPain =
+        pain.filter((p) => p > 0).reduce((a, b) => a + b, 0) /
+        Math.max(1, pain.filter((p) => p > 0).length);
 
       const totalTasks = tasks.data?.length ?? 0;
       const doneTasks = tasks.data?.filter((t) => t.status === "done").length ?? 0;
@@ -46,7 +62,9 @@ function ReportsPage() {
         const expected = 14; // assume daily
         return { name: m.name, v: Math.min(100, Math.round((count / expected) * 100)) };
       });
-      const overallAdherence = adherenceRows.length ? Math.round(adherenceRows.reduce((s, r) => s + r.v, 0) / adherenceRows.length) : 0;
+      const overallAdherence = adherenceRows.length
+        ? Math.round(adherenceRows.reduce((s, r) => s + r.v, 0) / adherenceRows.length)
+        : 0;
 
       return { pain, avgPain, totalTasks, doneTasks, adherenceRows, overallAdherence };
     },
@@ -54,12 +72,14 @@ function ReportsPage() {
 
   useRealtime(
     `reports:${circle?.id ?? "none"}`,
-    circle ? [
-      { table: "patient_moods", filter: `circle_id=eq.${circle.id}` },
-      { table: "medication_logs", filter: `circle_id=eq.${circle.id}` },
-      { table: "medications", filter: `circle_id=eq.${circle.id}` },
-      { table: "tasks", filter: `circle_id=eq.${circle.id}` },
-    ] : [],
+    circle
+      ? [
+          { table: "patient_moods", filter: `circle_id=eq.${circle.id}` },
+          { table: "medication_logs", filter: `circle_id=eq.${circle.id}` },
+          { table: "medications", filter: `circle_id=eq.${circle.id}` },
+          { table: "tasks", filter: `circle_id=eq.${circle.id}` },
+        ]
+      : [],
     () => qc.invalidateQueries({ queryKey: ["reports", circle?.id] }),
   );
 
@@ -71,8 +91,16 @@ function ReportsPage() {
 
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <KPI icon={Pill} label="Medication adherence" value={`${data?.overallAdherence ?? 0}%`} />
-        <KPI icon={HeartPulse} label="Avg pain rating" value={data?.avgPain ? data.avgPain.toFixed(1) : "—"} />
-        <KPI icon={CheckSquare} label="Tasks completed" value={`${data?.doneTasks ?? 0} / ${data?.totalTasks ?? 0}`} />
+        <KPI
+          icon={HeartPulse}
+          label="Avg pain rating"
+          value={data?.avgPain ? data.avgPain.toFixed(1) : "—"}
+        />
+        <KPI
+          icon={CheckSquare}
+          label="Tasks completed"
+          value={`${data?.doneTasks ?? 0} / ${data?.totalTasks ?? 0}`}
+        />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -81,7 +109,11 @@ function ReportsPage() {
           <div className="mt-6 flex items-end justify-between gap-2 h-48">
             {pain.map((p, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full rounded-t-lg bg-gradient-to-t from-primary/30 to-primary" style={{ height: `${(p / 10) * 100}%` }} title={`${p.toFixed(1)}`} />
+                <div
+                  className="w-full rounded-t-lg bg-gradient-to-t from-primary/30 to-primary"
+                  style={{ height: `${(p / 10) * 100}%` }}
+                  title={`${p.toFixed(1)}`}
+                />
                 <span className="text-[10px] text-muted-foreground">{i + 1}</span>
               </div>
             ))}
@@ -102,7 +134,9 @@ function ReportsPage() {
                 </div>
               </li>
             ))}
-            {(!data?.adherenceRows.length) && <li className="text-muted-foreground text-center py-6">No medications tracked yet.</li>}
+            {!data?.adherenceRows.length && (
+              <li className="text-muted-foreground text-center py-6">No medications tracked yet.</li>
+            )}
           </ul>
         </section>
       </div>
