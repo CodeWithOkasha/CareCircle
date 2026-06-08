@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 type TableSub = { table: string; filter?: string };
@@ -8,6 +8,9 @@ type TableSub = { table: string; filter?: string };
  * Calls `onChange` for every event. Cleans up on unmount or dep change.
  */
 export function useRealtime(channelName: string, subs: TableSub[], onChange: () => void) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     if (!subs.length) return;
     const ch = supabase.channel(channelName);
@@ -15,12 +18,12 @@ export function useRealtime(channelName: string, subs: TableSub[], onChange: () 
       (ch as unknown as { on: (...a: unknown[]) => unknown }).on(
         "postgres_changes",
         { event: "*", schema: "public", table: s.table, ...(s.filter ? { filter: s.filter } : {}) },
-        () => onChange(),
+        () => onChangeRef.current(),
       );
     });
     ch.subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [channelName, JSON.stringify(subs), onChange]);
+  }, [channelName, JSON.stringify(subs)]);
 }
