@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Pill, HeartPulse, CheckSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCircle } from "@/hooks/use-circle";
+import { useRealtime } from "@/hooks/use-realtime";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports & History — CareCircle" }] }),
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/reports")({
 
 function ReportsPage() {
   const { circle } = useCircle();
+  const qc = useQueryClient();
   const since = new Date(); since.setDate(since.getDate() - 14); since.setHours(0, 0, 0, 0);
 
   const { data } = useQuery({
@@ -49,6 +51,17 @@ function ReportsPage() {
       return { pain, avgPain, totalTasks, doneTasks, adherenceRows, overallAdherence };
     },
   });
+
+  useRealtime(
+    `reports:${circle?.id ?? "none"}`,
+    circle ? [
+      { table: "patient_moods", filter: `circle_id=eq.${circle.id}` },
+      { table: "medication_logs", filter: `circle_id=eq.${circle.id}` },
+      { table: "medications", filter: `circle_id=eq.${circle.id}` },
+      { table: "tasks", filter: `circle_id=eq.${circle.id}` },
+    ] : [],
+    () => qc.invalidateQueries({ queryKey: ["reports", circle?.id] }),
+  );
 
   const pain = data?.pain ?? Array(14).fill(0);
 
