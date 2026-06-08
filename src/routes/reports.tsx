@@ -135,7 +135,9 @@ function ReportsPage() {
               </li>
             ))}
             {!data?.adherenceRows.length && (
-              <li className="text-muted-foreground text-center py-6">No medications tracked yet.</li>
+              <li className="text-muted-foreground text-center py-6">
+                No medications tracked yet.
+              </li>
             )}
           </ul>
         </section>
