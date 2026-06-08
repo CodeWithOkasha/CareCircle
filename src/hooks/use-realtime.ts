@@ -22,6 +22,5 @@ export function useRealtime(channelName: string, subs: TableSub[], onChange: () 
     return () => {
       supabase.removeChannel(ch);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelName, JSON.stringify(subs)]);
+  }, [channelName, JSON.stringify(subs), onChange]);
 }
