@@ -47,17 +47,21 @@ export function CircleProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
 
-    // Find a circle the user belongs to
+    const preferredRole: AppRole =
+      (user.user_metadata?.role as AppRole | undefined) ?? profile?.role ?? "helper";
+
+    // Find the newest circle the user belongs to so duplicate bootstrap attempts do not pin them to stale data.
     const { data: mems } = await supabase
       .from("circle_members")
-      .select("circle_id")
+      .select("circle_id, care_circles(created_at)")
       .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
       .limit(1);
 
     let circleId = mems?.[0]?.circle_id as string | undefined;
 
     if (!circleId) {
-      // Bootstrap: create first circle and add user as admin
+      // Bootstrap: create first circle and keep the signup role selected by the user.
       const name = profile?.full_name ? `${profile.full_name}'s Care Circle` : "My Care Circle";
       const { data: created, error } = await supabase
         .from("care_circles")
@@ -66,11 +70,10 @@ export function CircleProvider({ children }: { children: ReactNode }) {
         .single();
       if (!error && created) {
         circleId = created.id as string;
-        // first member is admin regardless of stored profile role so they can manage
         await supabase.from("circle_members").insert({
           circle_id: circleId,
           user_id: user.id,
-          role: "admin",
+          role: preferredRole,
         });
       }
     }
@@ -94,22 +97,33 @@ export function CircleProvider({ children }: { children: ReactNode }) {
       );
     }
     setLoading(false);
-  }, [user, profile?.full_name]);
+  }, [user, profile?.full_name, profile?.role]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Realtime: refresh members when membership changes
+  // Realtime: refresh circle, member, and profile data when any connected client changes them.
   useEffect(() => {
     if (!circle) return;
     const ch = supabase
       .channel(`circle:${circle.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "circle_members", filter: `circle_id=eq.${circle.id}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "circle_members",
+          filter: `circle_id=eq.${circle.id}`,
+        },
         () => load(),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "care_circles", filter: `id=eq.${circle.id}` },
+        () => load(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(ch);

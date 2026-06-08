@@ -27,14 +27,26 @@ type AuthCtx = {
   ) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  updateProfile: (patch: Partial<Pick<Profile, "full_name" | "avatar_url" | "role">>) => Promise<{ error?: string }>;
+  updateProfile: (
+    patch: Partial<Pick<Profile, "full_name" | "avatar_url" | "role">>,
+  ) => Promise<{ error?: string }>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-async function fetchProfile(uid: string): Promise<Profile | null> {
-  const { data } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
-  return (data as Profile | null) ?? null;
+async function fetchProfile(user: User): Promise<Profile | null> {
+  const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (data) return data as Profile;
+
+  const role = (user.user_metadata?.role as AppRole | undefined) ?? "helper";
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "CareCircle member";
+  const { data: created } = await supabase
+    .from("profiles")
+    .insert({ id: user.id, full_name: fullName, role })
+    .select()
+    .maybeSingle();
+  return (created as Profile | null) ?? null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -47,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       if (sess?.user) {
         setTimeout(() => {
-          fetchProfile(sess.user.id).then(setProfile);
+          fetchProfile(sess.user).then(setProfile);
         }, 0);
       } else {
         setProfile(null);
@@ -57,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       if (data.session?.user) {
-        setProfile(await fetchProfile(data.session.user.id));
+        setProfile(await fetchProfile(data.session.user));
       }
       setLoading(false);
     });
@@ -88,8 +100,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (session?.user) setProfile(await fetchProfile(session.user.id));
+    if (session?.user) setProfile(await fetchProfile(session.user));
   };
+
+  useEffect(() => {
+    if (!session?.user) return;
+    const ch = supabase
+      .channel(`profile:${session.user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `id=eq.${session.user.id}` },
+        () => refreshProfile(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
 
   const updateProfile: AuthCtx["updateProfile"] = async (patch) => {
     if (!session?.user) return { error: "Not signed in" };
